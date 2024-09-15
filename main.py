@@ -4,10 +4,11 @@ from openai import AsyncOpenAI
 import re
 
 client = AsyncOpenAI(
-    api_key='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',
+    api_key="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",
 )
 
 app = FastAPI()
+
 
 @app.get("/")
 async def root():
@@ -19,36 +20,40 @@ class ParaphraseRequest(BaseModel):
     raw: str
     target_tier: int
 
+
 def load_vocab_list(vocab_file):
     """Load the custom vocabulary list from a file into a set."""
-    with open(vocab_file, 'r', encoding='utf-8') as file:
+    with open(vocab_file, "r", encoding="utf-8") as file:
         vocab = {line.strip().lower() for line in file}
     return vocab
 
+
 def highlight_unknown_words(vocab, text):
     """Highlight words in the text that are not in the vocabulary list."""
-    words = re.findall(r'\b\w+\b', text.lower())  # Extract all words
+    words = re.findall(r"\b\w+\b", text.lower())  # Extract all words
 
     highlighted_text = []
     for word in words:
         if word not in vocab:
-            highlighted_text.append(f'**[{word}]**')
+            highlighted_text.append(f"**[{word}]**")
         else:
             highlighted_text.append(word)
 
-    highlighted_text = ' '.join(highlighted_text)
+    highlighted_text = " ".join(highlighted_text)
     return highlighted_text
+
 
 def get_hsk_vocabulary(level):
     """Extract vocabulary from HSK files up to the given level."""
     vocabulary = []
     for i in range(1, level + 1):
         try:
-            with open(f"HSK {i}.txt", 'r', encoding='utf-8') as file:
+            with open(f"HSK {i}.txt", "r", encoding="utf-8") as file:
                 vocabulary.extend([line.strip() for line in file])
         except FileNotFoundError:
             print(f"Warning: HSK {i}.txt not found")
     return vocabulary
+
 
 text_example = {
     1: """
@@ -94,14 +99,35 @@ text_example = {
 async def paraphrase(request: ParaphraseRequest):
     level = request.target_tier
     hsk_vocabulary = get_hsk_vocabulary(level)
-    
+
     hsk_vocab_str = ", ".join(hsk_vocabulary)
 
     chat_completion = await client.chat.completions.create(
         messages=[
             {
                 "role": "system",
-                "content": "You are a professional Chinese translator. Your task is to simplify Chinese sentences or translate and simplify English sentences into Chinese. You will be given the learner's fluency level in their second language, when you translate the content, keep first language words that user likely would not know in their second language, given their fluency level."
+                "content": """You are a professional Chinese translator. Your task is to simplify Chinese sentences or translate and simplify English sentences into Chinese. You will be given the learner's fluency level in their second language, when you translate the content, keep first language words that user likely would not know in their second language, given their fluency level.
+
+                Here is an example of an English Sentence in different language fluency levels. 
+                Original English text: The study of abiogenesis aims to determine how pre-life chemical reactions gave rise to life under conditions strikingly different from those on Earth today. 
+                HSK level adjusted output: 
+                
+                HSK7:  生命起源的研究旨在确定在与当今地球截然不同的条件下，非生命的化学反应如何产生了生命。
+
+                HSK6: 生命来源的研究学习在与现在的地球环境不同的条件下，非生命的化学反应如何生成了生命。
+
+                HSK5: 生命 originate 的研究想要知道，在和现在不同的地球条件下，非生命的化学反应是怎么变成生命的。
+
+                HSK4: The study of 研究生命如何开始，想了解在不同环境下，化学反应是怎么产生生命的。
+
+                HSK3: Scientists学习生命是怎么开始的，他们想知道在不同条件下，化学reaction如何变成生命。
+
+                HSK2: 人们想知道life是怎么来的，他们想知道chemistry reaction 怎样变成life。
+
+                HSK1: 人想知道life是怎么来的。
+
+
+                """,
             },
             {
                 "role": "user",
@@ -131,7 +157,7 @@ async def paraphrase(request: ParaphraseRequest):
 
                 DON'T PUT SUPER COMPLICATED WORDS. IF SOMEONE IS HSK3, DON'T SHOW HSK7 WORDS. ALSO KEEP THE GRAMMAR SIMPLE! DO NOT ADD UNNECESSARY COMPLICATED GRAMMARS IN CHINESE.
                 """,
-            }
+            },
         ],
         model="gpt-4o",
     )
@@ -140,21 +166,23 @@ async def paraphrase(request: ParaphraseRequest):
         messages=[
             {
                 "role": "system",
-                "content": "You are a professional Chinese speaker. Your task is going to simplify Chinese sentences or translate and simplify English sentences into Chinese."
+                "content": "You are a professional Chinese translator. Your task is to simplify Chinese sentences or translate and simplify English sentences into Chinese. You will be given the learner's fluency level in their second language, when you translate the content, keep first language words that user likely would not know in their second language, given their fluency level.",
             },
             {
                 "role": "user",
                 "content": f"""
                     --- CONTENT START
+
                     
-                    {request.content}
+                    {chat_completion.choices[0].message.content}
+
                     
                     --- CONTENT END
                     
                     --- RAW START
                     
-                    {chat_completion.choices[0].message.content}
-                    
+                    {request.raw}
+
                     --- RAW END
 
                     The CONTENT provided above has the same meaning of the RAW provided above. The RAW has some html tags like link or bold. You need to add all the html tags in the RAW to the CONTENT. You should keep the same attributes like href.
@@ -177,12 +205,10 @@ async def paraphrase(request: ParaphraseRequest):
                     **If the provided content is empty or represent nothing, just response with nothing (nothing is literally nothing).**
                     **The response should not contains the indicator like "--- CONTENT START".**
                     """,
-            }
+            },
         ],
         model="chatgpt-4o-latest",
-        temperature=0.4
+        temperature=0.4,
     )
-
-    return chat_completion.choices[0].message.content
 
     return chat_completion.choices[0].message.content

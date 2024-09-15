@@ -1,0 +1,208 @@
+# -*- coding: utf-8 -*-
+
+
+# Phase 1 - Simplification of texts
+# + steps towards Phase 2
+
+## Simplification based on words classified as "too difficult"
+#
+#   We take B1 as reference level for English,
+#
+#   This can be analogously applied for HSK2 as reference level for Chinese.
+#
+
+
+
+####################################################################################
+####################################################################################
+####################################################################################
+
+
+#### Imports
+"""
+
+#!pip install requests
+#!pip install transformers
+#!pip install huggingface-hub
+!pip install openai==0.28
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+file_path = '/content/drive/MyDrive/MIT Hackathon'
+
+import os
+import openai
+import pandas as pd
+from tqdm import tqdm
+import time
+
+openai.api_key = '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'
+
+"""
+
+
+
+####################################################################################
+####################################################################################
+####################################################################################
+
+
+### Building the Set of Vocabulary Levels for English and Chinese"""
+
+def read_strings_from_txt(file_path):
+  with open(file_path, 'r') as f:
+    line = f.readline().strip()
+    strings = line.split(',')
+    return strings
+
+
+
+Vocabulary_English_CEFR_path = '/content/drive/MyDrive/MIT Hackathon/Vocabulary Lists English/'
+English_CEFR_A1 = set(read_strings_from_txt(Vocabulary_English_CEFR_path + 'English CEFR A1.txt'))
+English_CEFR_A2 = set(read_strings_from_txt(Vocabulary_English_CEFR_path + 'English CEFR A2.txt'))
+English_CEFR_B1 = set(read_strings_from_txt(Vocabulary_English_CEFR_path + 'English CEFR B1.txt'))
+English_CEFR_B2 = set(read_strings_from_txt(Vocabulary_English_CEFR_path + 'English CEFR B2.txt'))
+English_CEFR_C1 = set(read_strings_from_txt(Vocabulary_English_CEFR_path + 'English CEFR C1.txt'))
+
+Vocabulary_CEFR_List = {
+    'English_CEFR_A1': English_CEFR_A1,
+    'English_CEFR_A2': English_CEFR_A2,
+    'English_CEFR_B1': English_CEFR_B1,
+    'English_CEFR_B2': English_CEFR_B2,
+    'English_CEFR_C1': English_CEFR_C1
+    }
+
+#print(len(English_CEFR_A1))
+#print(len(English_CEFR_A2))
+#print(len(English_CEFR_B1))
+#print(len(English_CEFR_B2))
+#print(len(English_CEFR_C1))
+#print(len(Vocabulary_CEFR_List))
+
+
+### gets the vocabulary of the user 
+def get_vocab(CEFR_level):
+
+  vocabulary = set()
+
+  category_map = {
+      #'CEFR_C2': {'English_CEFR_A1', 'English_CEFR_A2', 'English_CEFR_B1', 'English_CEFR_B2', 'English_CEFR_C1', 'English_CEFR_C2'},
+      'CEFR_C1': {'English_CEFR_A1', 'English_CEFR_A2', 'English_CEFR_B1', 'English_CEFR_B2', 'English_CEFR_C1'},
+      'CEFR_B2': {'English_CEFR_A1', 'English_CEFR_A2', 'English_CEFR_B1', 'English_CEFR_B2'},
+      'CEFR_B1': {'English_CEFR_A1', 'English_CEFR_A2', 'English_CEFR_B1'},
+      'CEFR_A2': {'English_CEFR_A1', 'English_CEFR_A2'},
+      'CEFR_A1': {'English_CEFR_A1'},
+  }
+
+
+  current_level = category_map.get(CEFR_level, set())
+
+  for category in current_level:
+      vocabulary.update(Vocabulary_CEFR_List.get(category, set()))
+
+  return vocabulary
+
+
+def merge_vocab(current_vocabulary, custom_vocabulary):
+
+  current_vocabulary.update(custom_vocabulary)
+
+  return current_vocabulary
+
+
+
+## Builds datastructure of vocabulary based on level of user (
+## currently just a set, based on hashmap
+
+
+# approximate the level of the user - Version 1 with LLM
+def approximate_level_LLM():
+  return
+
+# given a vocabulary, approximate level of user - Version 2 with sets coverage by sampling
+def approximate_level_Sampling():
+  return
+
+### given a sentence, simplify it using a custom assistant, creating a new thread.
+def creating_assistant():
+  return
+
+
+
+"""#### Main Functions
+
+Calling of LLM with current level
+"""
+
+## given a paragraph
+
+def set_to_string(input_set):
+  return ','.join(input_set)
+
+def LLM_simplification(language_level, current_vocabulary, custom_vocabulary, current_paragraph):
+
+  begin_prompt = 'You are a professional English speaker. Your task is going to simplify parts of a given English text inside the following brackets {Text to translate} into a level that is appropriate for the user which only knows a certain amount of words, and words which you always should keep in the text and dont rewrite, written in double brackets {{always keep in text, dont rewrite}}, according to the approximately level: '
+  language_level = language_level
+  end_prompt = 'You should change as little as possible! only return a text that is almost the same, and replace words that are not in the vocabulary of the user, which you will receive inside the following brackets [Vocabulary of user], by simpler words which they already know, while retaining as much of the original text as possible. Remember about the {{}} notation for the translation, here is the vocabulary of the user'
+  total_prompt = end_prompt + '[' + set_to_string(current_vocabulary) + '], ALWAYS keep and NEVER replace the following words that occur, keep these words like it is in the text! {{' + set_to_string(custom_vocabulary)+ '}} in the dictionary in the text, keep them as is. This is the users paragraph, remove the {} brackets: '
+
+  messages = [
+      {"role": "system", "content": begin_prompt + language_level},
+      {"role": "system", "content": total_prompt},
+      {"role": "user", "content": '{' + set_to_string(current_paragraph) + '}'}
+  ]
+
+  response = openai.ChatCompletion.create(
+      model="gpt-4",
+      messages=messages,
+      max_tokens=1000,
+      temperature=0.1,
+      top_p=1.0,
+      frequency_penalty=0.0,
+      presence_penalty=0.0
+  )
+
+
+  return response['choices'][0]['message']['content'].strip()
+
+
+
+####################################################################################
+####################################################################################
+####################################################################################
+
+
+
+#############################
+####                    #####
+####  Input Processing  #####
+####                    #####
+#############################
+
+
+
+"""## Input processing"""
+
+## Process paragraphs
+
+# given a vocabulary, merge it with the current vocabulary at language level 3 (replace links)
+#Vocabulary_English_CEFR_path = '/content/drive/MyDrive/MIT Hackathon/Vocabulary Lists English/'
+#Custom_Vocabulary_list = set(read_strings_from_txt(Vocabulary_English_CEFR_path + 'English CEFR A1.txt'))
+
+language_level = 'CEFR_B1'
+
+current_vocabulary = get_vocab(language_level)
+
+custom_vocabulary = {'gregarious', 'wildfowl'}
+
+updated_vocabulary = merge_vocab(current_vocabulary, custom_vocabulary)
+
+print(len(current_vocabulary))
+
+current_paragraph = 'Chickens are gregarious, living in flocks, and incubate eggs and raise young communally. Individual chickens dominate others, establishing a pecking order; dominant individuals take priority for access to food and nest sites. The concept of dominance, involving pecking, was described in female chickens by Thorleif Schjelderup-Ebbe in 1921 as the "pecking order".[26][27] Male chickens tend to leap and use their claws in conflicts.[28] Chickens are capable of mobbing and killing a weak or inexperienced predator, such as a young fox'
+#prompt = 'You are a professional Chinese speaker. Your task is going to simplify Chinese sentences or translate and simplify English sentences into Chinese. You are given the following vocabulary that you are required to break down the text to as well as possible.'
+
+LLM_simplification(language_level, current_vocabulary, '', current_paragraph)
+
+LLM_simplification(language_level, current_vocabulary, custom_vocabulary, current_paragraph)

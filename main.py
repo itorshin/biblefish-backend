@@ -3,8 +3,6 @@ from pydantic import BaseModel
 from openai import AsyncOpenAI
 import re
 
-
-
 client = AsyncOpenAI(
     api_key='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',
 )
@@ -18,7 +16,7 @@ async def root():
 
 
 class ParaphraseRequest(BaseModel):
-    content: list[str]
+    content: str
     target_tier: int
 
 
@@ -55,11 +53,15 @@ async def paraphrase(request: ParaphraseRequest):
             {
                 "role": "user",
                 "content": f"""
+                --- CONTENT START
                 {request.content}
+                
+                --- CONTENT END
                 
                 Understand the provided content above. Retell them with the same meaning but only using Chinese Words from the Chinese HSK {request.target_tier} vocabulary set. You can break one sentence into multiple ones composed of Chinese HSK {request.target_tier} vocabulary. Your output should be in Chinese.
                 
-                **Your response should be a plain JSON object with 1 key called 'content'. The value of 'content' should be a list of simplified sentences, corresponding to the input sentences. No code block, no markdown, no HTML tags, no special characters. The order of the output sentences should be the same as the input sentences.**
+                **The response should only contains the paraphrased text.**
+                **If the provided content is empty or represent nothing, just response with nothing.**
                 """,
             }
         ],
